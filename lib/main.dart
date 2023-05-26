@@ -78,10 +78,15 @@ class ObjectProvider extends ChangeNotifier {
 
   /// Default Constructor of [ObjectProvider] that initializes
   /// [id], [_cheapObject] and [_expensiveObject]
+  ///
+  /// The constructor also calls [start] function so that streams are
+  /// initialized and start changing after their fixed durations.
   ObjectProvider()
       : id = const Uuid().v4(),
         _cheapObject = CheapObject(),
-        _expensiveObject = ExpensiveObject();
+        _expensiveObject = ExpensiveObject() {
+    start();
+  }
 
   /// Overrides the default [notifyListeners] in order to change / reset
   /// the [id] of the provider whenever [notifyListeners] is called.
@@ -116,6 +121,14 @@ class ObjectProvider extends ChangeNotifier {
       },
     );
   }
+
+  /// Stops subscription to [_cheapObjectStreamSubs] and
+  /// [_expensiveObjectStreamSubs]
+  void stop() {
+    _cheapObjectStreamSubs.cancel();
+    _expensiveObjectStreamSubs.cancel();
+    notifyListeners();
+  }
 }
 
 class HomePage extends StatelessWidget {
@@ -126,6 +139,38 @@ class HomePage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Center(child: Text('Home Page')),
+      ),
+      body: Column(
+        children: [
+          const Row(
+            children: [
+              Expanded(child: CheapWidget()),
+              Expanded(child: ExpensiveWidget()),
+            ],
+          ),
+          const Row(
+            children: [
+              Expanded(child: ObjectProviderWidget()),
+            ],
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TextButton(
+                /// read is used to get snapshot of [ObjectProvider] in order to
+                /// call the [stop] method when button is pressed
+                onPressed: context.read<ObjectProvider>().stop,
+                child: const Text('Stop'),
+              ),
+              TextButton(
+                /// read is used to get snapshot of [ObjectProvider] in order to
+                /// call the [start] method when button is pressed.
+                onPressed: context.read<ObjectProvider>().start,
+                child: const Text('Start'),
+              )
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -147,6 +192,7 @@ class ExpensiveWidget extends StatelessWidget {
       height: 100,
       color: Colors.blue,
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Text('Expensive Widget'),
           const Text('Last Updated'),
@@ -173,10 +219,54 @@ class CheapWidget extends StatelessWidget {
       height: 100,
       color: Colors.yellow,
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Text('Cheap Widget'),
           const Text('Last Updated'),
           Text(cheapObject.lastUpdated),
+        ],
+      ),
+    );
+  }
+}
+
+/// Widget to demonstrate [context.watch]
+class ObjectProviderWidget extends StatelessWidget {
+  const ObjectProviderWidget({Key? key}) : super(key: key);
+
+  /// [provider] looks for changes in entire [ObjectProvider] and
+  /// rebuilds the widget tree when changes occur.
+  ///
+  /// This is why [id] field of [ObjectProvider] was updated everytime
+  /// [changeNotifier] is called, so that there would be a change in
+  /// [ObjectProvider] that will be picked up by [provider] here.
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<ObjectProvider>();
+    return Container(
+      height: 100,
+      color: Colors.deepPurple,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text(
+            'Object Provider Widget',
+            style: TextStyle(
+              color: Colors.white,
+            ),
+          ),
+          const Text(
+            'ID',
+            style: TextStyle(
+              color: Colors.white,
+            ),
+          ),
+          Text(
+            provider.id,
+            style: const TextStyle(
+              color: Colors.white,
+            ),
+          ),
         ],
       ),
     );
